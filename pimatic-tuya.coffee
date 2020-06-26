@@ -112,31 +112,24 @@ module.exports = (env) ->
 
       @framework.variableManager.waitForInit()
       .then(()=>
-        @tuyaSwitch = new TS(
-          api: @api
-          deviceId: @deviceId
-          )
-        @plugin.loggedIn = true
-        #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
-        updateState()
+        if @plugin.loggedIn
+          @tuyaSwitch = new TS(
+            api: @api
+            deviceId: @deviceId
+            )
+          #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
+          updateState()
+        else
+          env.logger.debug "Error tuya not loggedIn"
+          updateState()
+          return
       )
 
-      @plugin.on 'loggedIn', @loginStatus = () =>
-        @tuyaSwitch = new TS(
-          api: @api
-          deviceId: @deviceId
-          )
-        ###
-        @tuyaSwitch.getSkills()
-        .then((s)=>
-          env.logger.debug "Skills: " + JSON.stringify(s,null,2)
-        )
-        ###
-        updateState()
-
-
       updateState = () =>
-        @tuyaSwitch.state()
+        unless @tuyaSwitch?
+          @updateTimer = setTimeout(updateState, @statePollingTime)
+          return
+        @tuyaSwitch.state({id:@deviceId})
         .then((s) =>
           env.logger.debug "state " + JSON.stringify(s,null,2)
           if s is "ON" then _s = on else _s = off
