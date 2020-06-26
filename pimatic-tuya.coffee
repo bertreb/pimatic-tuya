@@ -103,10 +103,12 @@ module.exports = (env) ->
       @config = config
       @id = @config.id
       @name = @config.name
-      @_state = lastState?.state?.value or off
+      #@_state = lastState?.state?.value or off
 
       @deviceId = @config.deviceId
       @api = api
+
+      @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
 
       @framework.variableManager.waitForInit()
       .then(()=>
@@ -116,20 +118,37 @@ module.exports = (env) ->
           )
         @plugin.loggedIn = true
         #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
+        updateState()
       )
 
       @plugin.on 'loggedIn', @loginStatus = () =>
-        unless @tuyaSwitch?
-          @tuyaSwitch = new TS(
-            api: @api
-            deviceId: @deviceId
-            )
+        @tuyaSwitch = new TS(
+          api: @api
+          deviceId: @deviceId
+          )
+        ###
         @tuyaSwitch.getSkills()
         .then((s)=>
           env.logger.debug "Skills: " + JSON.stringify(s,null,2)
         )
+        ###
+        updateState()
 
 
+      updateState = () =>
+        @tuyaSwitch.state()
+        .then((s) =>
+          env.logger.debug "state " + JSON.stringify(s,null,2)
+          if s is "ON" then _s = on else _s = off
+          return @changeStateTo(_s)
+        )
+        .then(()=>
+          @updateTimer = setTimeout(updateState, @statePollingTime)
+        )
+        .catch((err)=>
+          env.logger.debug "Error handled updateState: " + err
+          @updateTimer = setTimeout(updateState, 10000)
+        )
 
       super()
 
@@ -164,8 +183,9 @@ module.exports = (env) ->
 
 
     destroy:() =>
-      @removeListener 'loggedIn', @loginStatus
-      @tuyaSwitch = null
+      #@removeListener 'loggedIn', @loginStatus
+      clearTimeout(@updateTimer)
+      #@tuyaSwitch = null
       super()
 
   ###

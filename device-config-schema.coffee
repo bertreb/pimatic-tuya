@@ -11,6 +11,10 @@ module.exports = {
       icon:
         description: "Icon url of the device"
         type: "string"
+      statePollingTime:
+        description: "The time in milliseconds the status of a Tuya switch is updates/synced"
+        type: "number"
+        default: 60000
     }
   }
 }
