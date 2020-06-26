@@ -27,15 +27,17 @@ module.exports = (env) ->
         countryCode: @countryCode
         region: @region
       )
-      @api.login()
-      .then(() =>
-        @loggedIn = true
-        #env.logger.info '@api-login: ' + JSON.stringify(@api,null,2)
-        env.logger.debug "Login succesful"
-        @emit 'loggedIn'
-      ).catch((e) =>
-        env.logger.error 'Error login api: ' +  e.message
-      )
+      @apiLogin = () =>
+        @api.login()
+        .then(() =>
+          @loggedIn = true
+          #env.logger.info '@api-login: ' + JSON.stringify(@api,null,2)
+          env.logger.debug "Login succesful"
+          clearTimeout(@loginRetryTimer) if @loginRetryTimer?
+        ).catch((e) =>
+          env.logger.error 'Error login, retry login in 30 seconds. Error: ' +  e.message
+          @loginRetryTimer = setTimeout(@apiLogin,30000)
+        )
 
       @framework.deviceManager.registerDeviceClass('TuyaSwitch', {
         configDef: @deviceConfigDef.TuyaSwitch,
@@ -112,22 +114,30 @@ module.exports = (env) ->
 
       @framework.variableManager.waitForInit()
       .then(()=>
-        if @plugin.loggedIn
-          @tuyaSwitch = new TS(
-            api: @api
-            deviceId: @deviceId
-            )
-          #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
-          updateState()
-        else
-          env.logger.debug "Error tuya not loggedIn"
-          updateState()
-          return
+        initDevice = () =>
+          if @plugin.loggedIn
+            @tuyaSwitch = new TS(
+              api: @api
+              deviceId: @deviceId
+              )
+            #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
+            env.logger.debug "loggedIn and now updating state"
+            updateState()
+          else
+            env.logger.debug "Not loggedIn, reinit after login in 15 seconds"
+            @plugin.apiLogin()
+            @updateTimer = setTimeout(initDevice, 15000)
+            return
+        initDevice()
       )
 
       updateState = () =>
+        unless @plugin.loggedIn
+          env.logger.debug "Not loggedIn retry login"
+          @updateTimer = setTimeout(initDevice, 10000)
+          return       
         unless @tuyaSwitch?
-          @updateTimer = setTimeout(updateState, @statePollingTime)
+          @updateTimer = setTimeout(initDevice, 10000)
           return
         @tuyaSwitch.state({id:@deviceId})
         .then((s) =>
@@ -156,6 +166,7 @@ module.exports = (env) ->
         )
 
     changeStateTo: (state) ->
+      env.logger.debug "@tuyaSwitch exists? " + @tuyaSwitch? + ", state: " + state
       if @_destroyed or not @tuyaSwitch?
         return Promise.resolve()
       else
