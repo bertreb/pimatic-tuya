@@ -28,8 +28,8 @@ class BaseDevice {
     return JSON.parse((await this.getSkills())['state']);
   }
 
-  async state(){
-    return await this._api.state({id:this._deviceId});
+  async state(_d){
+    return await this._api.state(_d);
   }
 
 
