@@ -1,0 +1,40 @@
+{
+  "name": "pimatic-tuya",
+  "description": "Plugin to integrate Tuya device in Pimatic",
+  "author": {
+    "name": "Bert Gierveld",
+    "email": "gitbertreb@gmail.com",
+    "url": "https://github.com/bertreb"
+  },
+  "main": "pimatic-tuya",
+  "files": [
+    "pimatic-tuya.coffee",
+    "pimatic-tuya-config-schema.coffee",
+    "device-config-schema.coffee",
+    "README.md",
+    "LICENSE",
+    "HISTORY.md",
+    "cloudtuya.js",
+    "devices/basedevice.js",
+    "devices/switch"
+  ],
+  "homepage": "https://github.com/bertreb/pimatic-tuya.git",
+  "keywords": [
+    "pimatic",
+    "tuya"
+  ],
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bertreb/pimatic-tuya.git"
+  },
+  "configSchema": "pimatic-tuya-config-schema.coffee",
+  "dependencies": {},
+  "peerDependencies": {
+    "pimatic": "0.9.*"
+  },
+  "engines": {
+    "node": ">=4",
+    "npm": ">=2"
+  }
+}
