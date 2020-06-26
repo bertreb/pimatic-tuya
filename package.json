@@ -16,14 +16,14 @@
     "HISTORY.md",
     "cloudtuya.js",
     "devices/basedevice.js",
-    "devices/switch"
+    "devices/switch.js"
   ],
   "homepage": "https://github.com/bertreb/pimatic-tuya.git",
   "keywords": [
     "pimatic",
     "tuya"
   ],
-  "version": "0.0.1",
+  "version": "0.0.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bertreb/pimatic-tuya.git"
