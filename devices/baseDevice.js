@@ -11,6 +11,10 @@ class BaseDevice {
     this._deviceId = options.deviceId;
   }
 
+  async available() {
+    return JSON.parse((await this.getSkills())['online']);
+  }
+
   async turnOn() {
     return await this._api.setState({
       devId: this._deviceId,

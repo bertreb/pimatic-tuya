@@ -104,9 +104,14 @@ class CloudTuya {
     this.currentDevices = devices;
     debug(devices);
     // Check if device is in device list first
-    if(config.id) {
-      const matchDevice = await this.devices.filter(device => device.id === config.id);
-      if(matchDevice) this.currentDevices = matchDevice;
+    try {
+      if(devices&&config.id) {
+        const matchDevice = await this.devices.filter(device => device.id === config.id);
+        if(matchDevice) this.currentDevices = matchDevice;
+      }
+    }
+    catch (err) {
+      console.log("matchDevice error handled ");
     }
 
     return this.currentDevices;
@@ -146,15 +151,17 @@ class CloudTuya {
   async state(options) {
     let devices = await this.find(options);
     const config = (options) || {};
-    debug(`prefilter ${JSON.stringify(devices)}`);
-    devices = (config.id) ? devices.filter(device => device.id === config.id) : devices;
-    debug(`postfilter ${JSON.stringify(devices)}`);
-    const states = {};
-    const returnMap = await devices.map(device => this
-      .updateStatesCache(device.id, CloudTuya.smap(device.data.state), states));
-    debug(`Return map ${JSON.stringify(returnMap)}`);
-    debug(states);
-    return(states[config.id]) || states;
+    if (devices) {
+      debug(`prefilter ${JSON.stringify(devices)}`);
+      devices = (config.id) ? devices.filter(device => device.id === config.id) : devices;
+      debug(`postfilter ${JSON.stringify(devices)}`);
+      const states = {};
+      const returnMap = await devices.map(device => this
+        .updateStatesCache(device.id, CloudTuya.smap(device.data.state), states));
+      debug(`Return map ${JSON.stringify(returnMap)}`);
+    }
+    debug(this.sstates);
+    return(this.states[config.id]) || this.states;
   }
 
   async setState(options) {

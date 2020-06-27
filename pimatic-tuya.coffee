@@ -4,7 +4,8 @@ module.exports = (env) ->
   M = env.matcher
   _ = require('lodash')
   CloudTuya = require('./cloudtuya.js')
-  TS = require './devices/switch.js'
+  TSwitch = require './devices/switch.js'
+  TShutter = require './devices/shutter.js'
 
 
   class TuyaPlugin extends env.plugins.Plugin
@@ -36,12 +37,16 @@ module.exports = (env) ->
           clearTimeout(@loginRetryTimer) if @loginRetryTimer?
         ).catch((e) =>
           env.logger.error 'Error login, retry login in 30 seconds. Error: ' +  e.message
-          @loginRetryTimer = setTimeout(@apiLogin,30000)
+          @loginRetryTimer = setTimeout(@apiLogin,15000)
         )
 
       @framework.deviceManager.registerDeviceClass('TuyaSwitch', {
         configDef: @deviceConfigDef.TuyaSwitch,
         createCallback: (config, lastState) => new TuyaSwitch(config, lastState, @framework, @, @api)
+      })
+      @framework.deviceManager.registerDeviceClass('TuyaShutter', {
+        configDef: @deviceConfigDef.TuyaShutter,
+        createCallback: (config, lastState) => new TuyaShutter(config, lastState, @framework, @, @api)
       })
 
       ###
@@ -93,8 +98,8 @@ module.exports = (env) ->
           return "TuyaSwitch"
           #when "shutter"
           #  return "TuyaShutter"
-          #when "cover"
-          #  return "TuyaShutter"
+        when "cover"
+          return "TuyaShutter"
         else
           return null
 
@@ -116,7 +121,7 @@ module.exports = (env) ->
       .then(()=>
         initDevice = () =>
           if @plugin.loggedIn
-            @tuyaSwitch = new TS(
+            @tuyaSwitch = new TSwitch(
               api: @api
               deviceId: @deviceId
               )
@@ -141,7 +146,7 @@ module.exports = (env) ->
           return
         @tuyaSwitch.state({id:@deviceId})
         .then((s) =>
-          env.logger.debug "state " + JSON.stringify(s,null,2)
+          env.logger.debug "Switch state " + JSON.stringify(s,null,2)
           if s is "ON" then _s = on else _s = off
           return @changeStateTo(_s)
         )
@@ -166,7 +171,7 @@ module.exports = (env) ->
         )
 
     changeStateTo: (state) ->
-      env.logger.debug "@tuyaSwitch exists? " + @tuyaSwitch? + ", state: " + state
+      #env.logger.debug "@tuyaSwitch exists? " + @tuyaSwitch? + ", state: " + state
       if @_destroyed or not @tuyaSwitch?
         return Promise.resolve()
       else
@@ -189,8 +194,114 @@ module.exports = (env) ->
     destroy:() =>
       #@removeListener 'loggedIn', @loginStatus
       clearTimeout(@updateTimer)
-      #@tuyaSwitch = null
+      @tuyaSwitch = null
       super()
+
+
+  class TuyaShutter extends env.devices.ShutterController
+
+    constructor: (@config, lastState, @framework, @plugin, api) ->
+      @name = @config.name
+      @id = @config.id
+      @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
+      @_position = lastState?.position?.value or 'stopped'
+      @rollingTime = @config.rollingTime ? 15000
+
+      ###
+      {
+      "data": {
+        "support_stop": true,
+        "online": true,
+        "state": 3
+      },
+      "name": "Rolluik",
+      "icon": "https://images.tuyaeu.com/smart/icon/ay1509430484182dhmed/158372064901fba692f5f.png",
+      "id": "bf3d92d78b00ee98b9g2nv",
+      "dev_type": "cover",
+      "ha_type": "cover"
+      }
+      ###
+
+      @deviceId = @config.deviceId
+      @api = api
+
+      @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
+
+      @framework.variableManager.waitForInit()
+      .then(()=>
+        initDevice = () =>
+          if @plugin.loggedIn
+            @tuyaShutter = new TShutter(
+              api: @api
+              deviceId: @deviceId
+              )
+            env.logger.debug "loggedIn and now updating state"
+            updateState()
+          else
+            env.logger.debug "Not loggedIn, reinit after login in 15 seconds"
+            @plugin.apiLogin()
+            @updateTimer = setTimeout(initDevice, 15000)
+            return
+        initDevice()
+      )
+
+      updateState = () =>
+        unless @plugin.loggedIn
+          env.logger.debug "Not loggedIn retry login"
+          @updateTimer = setTimeout(initDevice, 30000)
+          return       
+        unless @tuyaShutter?
+          @updateTimer = setTimeout(initDevice, 30000)
+          return
+        #@tuyaShutter.getSkills()
+        #.then((skills)=>
+        #  env.logger.info "Shutter skills: " + JSON.stringify(skills,null,2)
+        #)
+
+        @tuyaShutter.state({id:@deviceId})
+        .then((s) =>
+          env.logger.debug "Shutter state " + JSON.stringify(s,null,2)
+          #if s is "ON" then _s = on else _s = off
+          #return @changeStateTo(_s)
+        )
+        .then(()=>
+          @updateTimer = setTimeout(updateState, @statePollingTime)
+        )
+        .catch((err)=>
+          env.logger.debug "Error handled updateState: "
+          @updateTimer = setTimeout(updateState, 30000)
+        )
+
+      super()
+
+    stop: ->
+      @_setPosition('stopped')
+      env.logger.debug "Shutter stop"
+      #return Promise.resolve()
+      @tuyaShutter.stop()
+      .then(()=>
+        return Promise.resolve()
+      )
+
+    # Returns a promise that is fulfilled when done.
+    moveToPosition: (position) ->
+      switch position
+        when 'up'
+          env.logger.debug "Shutter up"
+          @tuyaShutter.setState(1)
+        when 'down'
+          env.logger.debug "Shutter down"
+          @tuyaShutter.setState(0)
+        else
+          @tuyaShutter.stop()
+      @_setPosition(position)
+      return Promise.resolve()
+
+    destroy:() =>
+      clearTimeout(@updateTimer)
+      @tuyaShutter = null
+      super()
+
 
   ###
 
