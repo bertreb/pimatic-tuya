@@ -36,8 +36,8 @@ module.exports = (env) ->
           env.logger.debug "Login succesful"
           clearTimeout(@loginRetryTimer) if @loginRetryTimer?
         ).catch((e) =>
-          env.logger.error 'Error login, retry login in 30 seconds. Error: ' +  e.message
-          @loginRetryTimer = setTimeout(@apiLogin,15000)
+          env.logger.info 'Tuya login error, retry in 30 seconds.' #' Error: ' +  e.message
+          @loginRetryTimer = setTimeout(@apiLogin,30000)
         )
       @apiLogin()
 
@@ -68,29 +68,35 @@ module.exports = (env) ->
 
       @framework.deviceManager.on('discover', (eventData) =>
         @framework.deviceManager.discoverMessage 'pimatic-tuya', 'Searching for new devices'
-        @api.find()
-        .then((devices) =>
-          env.logger.debug "Found devices: " + JSON.stringify(devices,null,2)
-          for device in devices
-            _newId = device.id
-            if _.find(@framework.deviceManager.devicesConfig,(d) => (d.id).indexOf(_newId)>=0)
-              env.logger.info "Device '" + _newId + "' already in config"
+        if @loggedIn
+          @api.find()
+          .then((devices) =>
+            if devices?
+              env.logger.debug "Found devices: " + JSON.stringify(devices,null,2)
+              for device in devices
+                _newId = device.id
+                if _.find(@framework.deviceManager.devicesConfig,(d) => (d.id).indexOf(_newId)>=0)
+                  env.logger.info "Device '" + _newId + "' already in config"
+                else
+                  _newClass = @selectClass(device.dev_type)
+                  if _newClass
+                    config =
+                      id: _newId
+                      name: device.name
+                      class: _newClass
+                      icon: device.icon
+                      deviceId: device.id
+                    @framework.deviceManager.discoveredDevice( "Tuya", config.name, config)
+                  else
+                    env.logger.debug "Devicetpye '#{device.device_type}' is not yet supported."
             else
-              _newClass = @selectClass(device.dev_type)
-              if _newClass
-                config =
-                  id: _newId
-                  name: device.name
-                  class: _newClass
-                  icon: device.icon
-                  deviceId: device.id
-                @framework.deviceManager.discoveredDevice( "Tuya", config.name, config)
-              else
-                env.logger.debug "Devicetpye '#{device.device_type}' is not yet supported."
-        )
-        .catch((e) =>
-          env.logger.error 'Error find devices: ' +  e
-        )
+              env.logger.info "No devices found in discovery"
+          )
+          .catch((e) =>
+            env.logger.debug 'Error find devices: ' + e
+          )
+        else
+          env.logger.info "Tuya not logged in, try again later"
       )
 
     selectClass: (deviceType) =>
