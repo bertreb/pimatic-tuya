@@ -160,7 +160,7 @@ class CloudTuya {
         .updateStatesCache(device.id, CloudTuya.smap(device.data.state), states));
       debug(`Return map ${JSON.stringify(returnMap)}`);
     }
-    debug(this.sstates);
+    debug(this.states);
     return(this.states[config.id]) || this.states;
   }
 
