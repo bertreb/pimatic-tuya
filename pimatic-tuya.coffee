@@ -39,6 +39,7 @@ module.exports = (env) ->
           env.logger.error 'Error login, retry login in 30 seconds. Error: ' +  e.message
           @loginRetryTimer = setTimeout(@apiLogin,15000)
         )
+      @apiLogin()
 
       @framework.deviceManager.registerDeviceClass('TuyaSwitch', {
         configDef: @deviceConfigDef.TuyaSwitch,
@@ -140,7 +141,7 @@ module.exports = (env) ->
         unless @plugin.loggedIn
           env.logger.debug "Not loggedIn retry login"
           @updateTimer = setTimeout(initDevice, 10000)
-          return       
+          return
         unless @tuyaSwitch?
           @updateTimer = setTimeout(initDevice, 10000)
           return
@@ -249,7 +250,7 @@ module.exports = (env) ->
         unless @plugin.loggedIn
           env.logger.debug "Not loggedIn retry login"
           @updateTimer = setTimeout(initDevice, 30000)
-          return       
+          return
         unless @tuyaShutter?
           @updateTimer = setTimeout(initDevice, 30000)
           return
@@ -317,7 +318,7 @@ module.exports = (env) ->
       @roomsArray = []
       @roomsStringVar = null
       @waterStringVar = null
-      @area = 
+      @area =
         x1: 0
         y1: 0
         x2: 0
@@ -539,7 +540,7 @@ module.exports = (env) ->
         return {
           token: match
           nextInput: input.substring(match.length)
-          actionHandler: new DeebotActionHandler(@framework, beebotDevice, @command, @rooms, @roomsStringVar, @speed,  
+          actionHandler: new DeebotActionHandler(@framework, beebotDevice, @command, @rooms, @roomsStringVar, @speed,
             @speedStringVar, @waterlevel, @waterStringVar, @area, @areaStringVar, @cleanings, @cleaningsStringVar)
         }
       else
@@ -548,7 +549,7 @@ module.exports = (env) ->
 
   class DeebotActionHandler extends env.actions.ActionHandler
 
-    constructor: (@framework, @beebotDevice, @command, @rooms, @roomsStringVar, @speed, 
+    constructor: (@framework, @beebotDevice, @command, @rooms, @roomsStringVar, @speed,
       @speedStringVar, @waterlevel, @waterStringVar, @area, @areaStringVar, @cleanings, @cleaningsStringVar) ->
 
     executeAction: (simulate) =>
