@@ -117,39 +117,37 @@ module.exports = (env) ->
       @config = config
       @id = @config.id
       @name = @config.name
-      #@_state = lastState?.state?.value or off
+      @_state = lastState?.state?.value or off
 
       @deviceId = @config.deviceId
       @api = api
 
       @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
 
-      @framework.variableManager.waitForInit()
-      .then(()=>
-        initDevice = () =>
-          if @plugin.loggedIn
-            @tuyaSwitch = new TSwitch(
-              api: @api
-              deviceId: @deviceId
-              )
-            #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
-            env.logger.debug "loggedIn and now updating state"
-            updateState()
-          else
-            env.logger.debug "Not loggedIn, reinit after login in 15 seconds"
-            @plugin.apiLogin()
-            @updateTimer = setTimeout(initDevice, 15000)
-            return
-        initDevice()
-      )
+      @initDevice = () =>
+        if @plugin.loggedIn
+          @tuyaSwitch = new TSwitch(
+            api: @api
+            deviceId: @deviceId
+            )
+          #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
+          env.logger.debug "loggedIn and now start updating state"
+          @updateState()
+        else
+          env.logger.debug "Not loggedIn, reinit after login in 30 seconds"
+          @plugin.apiLogin()
+          @updateTimer = setTimeout(@initDevice, 30000)
+          return
 
-      updateState = () =>
+      @updateState = () =>
+        clearTimeout(@updateTimer) if @updateTimer?
         unless @plugin.loggedIn
-          env.logger.debug "Not loggedIn retry login"
-          @updateTimer = setTimeout(initDevice, 10000)
+          env.logger.debug "Not loggedIn recreate switch device"
+          @updateTimer = setTimeout(@initDevice, 30000)
           return
         unless @tuyaSwitch?
-          @updateTimer = setTimeout(initDevice, 10000)
+          env.logger.debug "No @tuyaSwitch recreate switch device"
+          @updateTimer = setTimeout(@initDevice, 30000)
           return
         @tuyaSwitch.state({id:@deviceId})
         .then((s) =>
@@ -158,16 +156,22 @@ module.exports = (env) ->
           return @changeStateTo(_s)
         )
         .then(()=>
-          @updateTimer = setTimeout(updateState, @statePollingTime)
+          @updateTimer = setTimeout(@updateState, @statePollingTime)
         )
         .catch((err)=>
-          env.logger.debug "Error handled updateState: " + err
-          @updateTimer = setTimeout(updateState, 10000)
+          #env.logger.debug "Error handled updateState: " + err
+          @updateTimer = setTimeout(@updateState, @statePollingTime)
         )
+
+      @framework.variableManager.waitForInit()
+      .then(()=>
+        @initDevice()
+      )
 
       super()
 
-    getState: () ->
+    getState: () =>
+      #return Promise.resolve @_state
       if @_destroyed or not @tuyaSwitch?
         return Promise.resolve @_state
       else

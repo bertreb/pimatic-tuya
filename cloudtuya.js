@@ -151,17 +151,17 @@ class CloudTuya {
   async state(options) {
     let devices = await this.find(options);
     const config = (options) || {};
-    if (devices) {
-      debug(`prefilter ${JSON.stringify(devices)}`);
-      devices = (config.id) ? devices.filter(device => device.id === config.id) : devices;
-      debug(`postfilter ${JSON.stringify(devices)}`);
-      const states = {};
-      const returnMap = await devices.map(device => this
-        .updateStatesCache(device.id, CloudTuya.smap(device.data.state), states));
-      debug(`Return map ${JSON.stringify(returnMap)}`);
-    }
-    debug(this.states);
-    return(this.states[config.id]) || this.states;
+    //if (devices) {
+    debug(`prefilter ${JSON.stringify(devices)}`);
+    devices = (config.id) ? devices.filter(device => device.id === config.id) : devices;
+    debug(`postfilter ${JSON.stringify(devices)}`);
+    const states = {};
+    const returnMap = await devices.map(device => this
+      .updateStatesCache(device.id, CloudTuya.smap(device.data.state), states));
+    debug(`Return map ${JSON.stringify(returnMap)}`);
+    //}
+    debug(states);
+    return(states[config.id]) || states;
   }
 
   async setState(options) {
