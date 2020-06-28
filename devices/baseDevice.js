@@ -48,5 +48,6 @@ class BaseDevice {
     var skills = await this.getSkills();
     return !!skills[feature];
   }
+
 }
 module.exports = BaseDevice;

@@ -65,6 +65,7 @@ class CloudTuya {
     config.method = 'POST';
     return new Promise((resolve, reject) => {
       request(config, (err, response, body) => {
+        //console.log("responsee: " + JSON.stringify(response.body,null,2));
         if(!err && response.statusCode === 200) {
           debug(body);
           resolve(body);
@@ -79,6 +80,7 @@ class CloudTuya {
   async find(options) {
     const config = (options) || {};
     // Scan network otherwise or no device id in options
+    //console.log('Accesstoken ok: ' + this.accessToken);
     const uri = `${this.uri}/skill`;
     const data = {
       header: {
@@ -103,6 +105,7 @@ class CloudTuya {
     this.devices = devices;
     this.currentDevices = devices;
     debug(devices);
+    //console.log("devices: " + JSON.stringify(devices,null,2));
     // Check if device is in device list first
     try {
       if(devices&&config.id) {

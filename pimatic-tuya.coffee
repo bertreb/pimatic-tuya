@@ -4,7 +4,7 @@ module.exports = (env) ->
   M = env.matcher
   _ = require('lodash')
   CloudTuya = require('./cloudtuya.js')
-  TSwitch = require './devices/switch.js'
+  Switch = require './devices/switch.js'
   TShutter = require './devices/shutter.js'
 
 
@@ -117,7 +117,11 @@ module.exports = (env) ->
       @config = config
       @id = @config.id
       @name = @config.name
-      @_state = lastState?.state?.value or off
+
+      env.logger.debug "Destroyed: " + @_destroyed
+      if @_destroyed then return
+
+      @_state = lastState?.state?.value ? off
 
       @deviceId = @config.deviceId
       @api = api
@@ -125,48 +129,47 @@ module.exports = (env) ->
       @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
 
       @initDevice = () =>
+        clearTimeout(@initTimer) if @initTimer?
         if @plugin.loggedIn
-          @tuyaSwitch = new TSwitch(
-            api: @api
-            deviceId: @deviceId
-            )
+          unless @tuyaSwitch?
+            @tuyaSwitch = new Switch(
+              api: @api
+              deviceId: @deviceId
+              )
           #env.logger.info "Switch: " + JSON.stringify(@tuyaSwitch,null,2)
           env.logger.debug "loggedIn and now start updating state"
           @updateState()
         else
           env.logger.debug "Not loggedIn, reinit after login in 30 seconds"
           @plugin.apiLogin()
-          @updateTimer = setTimeout(@initDevice, 30000)
+          @initTimer = setTimeout(@initDevice, 30000)
           return
 
       @updateState = () =>
         clearTimeout(@updateTimer) if @updateTimer?
         unless @plugin.loggedIn
           env.logger.debug "Not loggedIn recreate switch device"
-          @updateTimer = setTimeout(@initDevice, 30000)
+          @initTimer = setTimeout(@initDevice, 30000)
           return
         unless @tuyaSwitch?
           env.logger.debug "No @tuyaSwitch recreate switch device"
-          @updateTimer = setTimeout(@initDevice, 30000)
+          @initTimer = setTimeout(@initDevice, 30000)
           return
         @tuyaSwitch.state({id:@deviceId})
         .then((s) =>
           env.logger.debug "Switch state " + JSON.stringify(s,null,2)
           if s is "ON" then _s = on else _s = off
-          return @changeStateTo(_s)
-        )
-        .then(()=>
-          @updateTimer = setTimeout(@updateState, @statePollingTime)
+          @changeStateTo(_s)
+          .then(()=>
+            @updateTimer = setTimeout(@updateState, @statePollingTime)
+          )
         )
         .catch((err)=>
           #env.logger.debug "Error handled updateState: " + err
           @updateTimer = setTimeout(@updateState, @statePollingTime)
         )
 
-      @framework.variableManager.waitForInit()
-      .then(()=>
-        @initDevice()
-      )
+      setTimeout(@initDevice,10000)
 
       super()
 
@@ -204,8 +207,9 @@ module.exports = (env) ->
 
     destroy:() =>
       #@removeListener 'loggedIn', @loginStatus
-      clearTimeout(@updateTimer)
-      @tuyaSwitch = null
+      @_destroyed = true
+      clearTimeout(@updateTimer) if @updateTimer?
+      clearTimeout(@initTimer) if @initTimer?
       super()
 
 
@@ -214,6 +218,9 @@ module.exports = (env) ->
     constructor: (@config, lastState, @framework, @plugin, api) ->
       @name = @config.name
       @id = @config.id
+
+      if @_destroyed then return
+
       @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
       @_position = lastState?.position?.value or 'stopped'
       @rollingTime = @config.rollingTime ? 15000
