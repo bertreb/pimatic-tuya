@@ -36,8 +36,8 @@ module.exports = (env) ->
           env.logger.debug "Login succesful"
           clearTimeout(@loginRetryTimer) if @loginRetryTimer?
         ).catch((e) =>
-          env.logger.info 'Tuya login error, retry in 30 seconds.' #' Error: ' +  e.message
-          @loginRetryTimer = setTimeout(@apiLogin,30000)
+          env.logger.info 'Tuya login error, retry in 5 minutes.' #' Error: ' +  e.message
+          @loginRetryTimer = setTimeout(@apiLogin,300000)
         )
       @apiLogin()
 
@@ -141,20 +141,20 @@ module.exports = (env) ->
           env.logger.debug "loggedIn and now start updating state"
           @updateState()
         else
-          env.logger.debug "Not loggedIn, reinit after login in 30 seconds"
+          env.logger.debug "Not loggedIn, reinit after login in 5 minutes"
           @plugin.apiLogin()
-          @initTimer = setTimeout(@initDevice, 30000)
+          @initTimer = setTimeout(@initDevice, 300000)
           return
 
       @updateState = () =>
         clearTimeout(@updateTimer) if @updateTimer?
         unless @plugin.loggedIn
           env.logger.debug "Not loggedIn recreate switch device"
-          @initTimer = setTimeout(@initDevice, 30000)
+          @initTimer = setTimeout(@initDevice, 300000)
           return
         unless @tuyaSwitch?
           env.logger.debug "No @tuyaSwitch recreate switch device"
-          @initTimer = setTimeout(@initDevice, 30000)
+          @initTimer = setTimeout(@initDevice, 300000)
           return
         @tuyaSwitch.state({id:@deviceId})
         .then((s) =>
@@ -222,7 +222,8 @@ module.exports = (env) ->
 
       if @_destroyed then return
 
-      @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
+      @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 300000
+      if $statePollingTime < 300000 then @statePollingTime = 300000 # 5 minutes
       @_position = lastState?.position?.value or 'stopped'
       @rollingTime = @config.rollingTime ? 15000
 
@@ -244,7 +245,7 @@ module.exports = (env) ->
       @deviceId = @config.deviceId
       @api = api
 
-      @statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
+      #@statePollingTime = if @config.statePollingTime? then @config.statePollingTime else 60000
 
       @framework.variableManager.waitForInit()
       .then(()=>
@@ -267,10 +268,10 @@ module.exports = (env) ->
       updateState = () =>
         unless @plugin.loggedIn
           env.logger.debug "Not loggedIn retry login"
-          @updateTimer = setTimeout(initDevice, 30000)
+          @updateTimer = setTimeout(initDevice, 300000)
           return
         unless @tuyaShutter?
-          @updateTimer = setTimeout(initDevice, 30000)
+          @updateTimer = setTimeout(initDevice, 300000)
           return
         #@tuyaShutter.getSkills()
         #.then((skills)=>
@@ -288,7 +289,7 @@ module.exports = (env) ->
         )
         .catch((err)=>
           env.logger.debug "Error handled updateState: "
-          @updateTimer = setTimeout(updateState, 30000)
+          @updateTimer = setTimeout(updateState, 300000)
         )
 
       super()
