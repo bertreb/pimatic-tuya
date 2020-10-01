@@ -30,9 +30,9 @@ module.exports = (env) ->
       )
       @apiLogin = () =>
         @api.login()
-        .then(() =>
+        .then((info) =>
           @loggedIn = true
-          #env.logger.info '@api-login: ' + JSON.stringify(@api,null,2)
+          env.logger.debug '@api-login: ' + JSON.stringify(@api,null,2)
           env.logger.debug "Login succesful"
           clearTimeout(@loginRetryTimer) if @loginRetryTimer?
         ).catch((e) =>
@@ -71,6 +71,7 @@ module.exports = (env) ->
         if @loggedIn
           @api.find()
           .then((devices) =>
+            env.logger.info "Devices? " + devices
             if devices?
               env.logger.debug "Found devices: " + JSON.stringify(devices,null,2)
               for device in devices
@@ -79,7 +80,7 @@ module.exports = (env) ->
                   env.logger.info "Device '" + _newId + "' already in config"
                 else
                   _newClass = @selectClass(device.dev_type)
-                  if _newClass
+                  if _newClass?
                     config =
                       id: _newId
                       name: device.name

@@ -1,5 +1,5 @@
 const request = require('request');
-const debug = require('debug')('cloudtuya');
+//const debug = require('debug')('cloudtuya');
 // A module that uses the tuya cloud api, to get and set device states
 // All you need is to put your tuya/smartlife email and pass
 // Into the keys.json file
@@ -54,6 +54,12 @@ class CloudTuya {
     this.uri = 'https://px1.tuya' + config.region + '.com/homeassistant';
   }
 
+  debug(info) {
+    console.log('Tuya debug: '+JSON.stringify(info,null,2));
+  }
+
+
+
   /**
    *
    * @param {Object} options requst options
@@ -67,7 +73,7 @@ class CloudTuya {
       request(config, (err, response, body) => {
         //console.log("responsee: " + JSON.stringify(response.body,null,2));
         if(!err && response.statusCode === 200) {
-          debug(body);
+          this.debug(body);
           resolve(body);
         } else if(err) reject(err);
       });
@@ -104,11 +110,10 @@ class CloudTuya {
     const{ payload: { devices } } = await this.post(postConfig);
     this.devices = devices;
     this.currentDevices = devices;
-    debug(devices);
-    //console.log("devices: " + JSON.stringify(devices,null,2));
+    this.debug(devices);
     // Check if device is in device list first
     try {
-      if(devices&&config.id) {
+      if(config.id) {
         const matchDevice = await this.devices.filter(device => device.id === config.id);
         if(matchDevice) this.currentDevices = matchDevice;
       }
@@ -155,15 +160,15 @@ class CloudTuya {
     let devices = await this.find(options);
     const config = (options) || {};
     //if (devices) {
-    debug(`prefilter ${JSON.stringify(devices)}`);
+    this.debug(`prefilter ${JSON.stringify(devices)}`);
     devices = (config.id) ? devices.filter(device => device.id === config.id) : devices;
-    debug(`postfilter ${JSON.stringify(devices)}`);
+    this.debug(`postfilter ${JSON.stringify(devices)}`);
     const states = {};
     const returnMap = await devices.map(device => this
       .updateStatesCache(device.id, CloudTuya.smap(device.data.state), states));
-    debug(`Return map ${JSON.stringify(returnMap)}`);
+    this.debug(`Return map ${JSON.stringify(returnMap)}`);
     //}
-    debug(states);
+    this.debug(states);
     return(states[config.id]) || states;
   }
 
@@ -177,7 +182,7 @@ class CloudTuya {
     // dsp 1 default
     payload.value = CloudTuya.lmap(config.setState);
     const command = config.command || 'turnOnOff';
-    debug(payload);
+    this.debug(payload);
     const data = {
       header: {
         name: command,
@@ -195,7 +200,7 @@ class CloudTuya {
       headers,
       json: data,
     };
-    debug(postConfig);
+    this.debug(postConfig);
     const setProgress = await this.post(postConfig);
     return setProgress;
   }
@@ -220,7 +225,7 @@ class CloudTuya {
     tokens = JSON.parse(tokens);
     this.tokens = tokens;
     this.accessToken = tokens.access_token;
-    debug(tokens);
+    this.debug(tokens);
 
     if(tokens && tokens.responseStatus && tokens.responseStatus === 'error'){
       console.error(tokens.errorMsg);
