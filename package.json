@@ -24,7 +24,7 @@
     "pimatic",
     "tuya"
   ],
-  "version": "0.0.14",
+  "version": "0.0.15",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bertreb/pimatic-tuya.git"
@@ -33,6 +33,10 @@
   "dependencies": {},
   "peerDependencies": {
     "pimatic": "0.9.*"
+  },
+  "dependencies": {
+    "lodash": "^4.17.15",
+    "request": "^2.88.0"
   },
   "engines": {
     "node": ">=4",
